@@ -1,0 +1,42 @@
+\documentclass[tikz]{standalone}
+
+\usepackage{pgf}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+\usetikzlibrary{shadows}
+\usetikzlibrary{arrows}
+\usetikzlibrary{positioning}
+\usetikzlibrary{shapes}
+\usetikzlibrary{shadows}
+\usetikzlibrary{3d}
+\usetikzlibrary{arrows}
+\usetikzlibrary{decorations.pathreplacing}
+
+\begin{document}
+
+
+\begin{tikzpicture}[scale=1,  every node/.style={transform shape}]
+
+\path[draw, dashed,->] (1.5, 0) -- (1.5, 1.5) -- (4.5, 1.5) -- (4.5, 3); 
+
+\path[draw] (0, 2) -- (1, 2) -- (1, 3) ; 
+\path[draw] (0, 1) -- (1, 1) -- (1, 0) ; 
+
+\path[draw] (2, 3) -- (2, 2) -- (4, 2) -- (4, 3) ; 
+\path[draw] (2, 0) -- (2, 1) -- (4, 1) -- (4, 0) ; 
+
+\path[draw] (5, 0) -- (5, 1) -- (6, 1); 
+\path[draw] (5, 3) -- (5, 2) -- (6, 2); 
+
+\node[anchor=center] at (1.5,-0.4) {\emph{A}};
+\node[anchor=center] at (4.5, 3.4) {\emph{B}};
+
+\node[anchor=center] at (1.3,0.5) {$u_1$};
+\node[anchor=center] at (3,1.7)   {$u_2$};
+\node[anchor=center] at (4.3,2.5) {$u_3$};
+\end{tikzpicture}
+
+\end{document}
+
+
+
