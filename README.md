@@ -54,3 +54,60 @@ The format of the file can easily processed with tools like Gnuplot. The last th
 ## The GPS coordinate data stream
 BerlinMODPlayer generates a stream of GPS coordinates. The output URL determines the output transport and the output format. Currently, two different output formats and transports are supported: (i) the data can be send in the CSV format (Comma-separated values) via a TCP socket or (ii) the data can be send in the JSON format (JavaScript Object Notation) [5] via HTTP requests. Both formats and transports are discussed in the next sections. The next table describes the structure of the supported output URLs.
 
+|       Output URL           | Description        |
+|----------------------------|--------------------|
+| tcp://myhostname/myport    | Send the output in CSV format via TCP to the host _myhostname_ on port _myport_. |
+| http://myhostname/document | Send the output in JSON format via HTTP-Requests to the URL http://myhostname/document. |
+
+### CSV format and TCP output
+Every GPS coordinate is represented as a line with five fields: (i) The time stamp when the coordinate is measured, (ii) the object, i.e. the vehicle, who has measured the coordinate, (iii) an id for the trip and (iv) the X and (v) the Y coordinate.
+
+![Figure](doc/images/csv.png)
+
+The generated coordinate stream consists of lines in the format described above, ordered by the time stamp of the lines. For example:
+
+```
+28-05-2007 10:00:14,10,1313,13.2967,52.4502
+28-05-2007 10:00:15,22,3107,13.2178,52.5086
+28-05-2007 10:00:15,112,16315,13.2063,52.5424
+28-05-2007 10:00:15,6,751,13.322,52.4626
+```
+
+After the last coordinate update is send, the ascii _character end of transmission (EOT)_ will be send, to indicate the end of the data stream. Afterwards, the tcp connection will be closed.
+
+### JSON format and HTTP output
+Alternatively, the GPS coordinate stream can send via HTTP PUT-Requests. For that kind of output, the GPS coordinates are converted into the JSON format. One coordinate in JSON format looks like:
+```
+{
+    "Id":"100000000000000",
+    "Position":{
+        "date":"2015-03-06T23:20:01.000",
+        "x":13.141600000000002,
+        "y":13.141600000000002
+    }
+}
+```
+
+Each coordinate update is send via a single HTTP request to the URL, indicated by the output URL.
+
+## Process the GPS coordinate stream with SECONDO
+Secondo contains an operator called csvimport, to import csv separated data into a relation. This operator can read the data from a file or from a network socket. In this paper, the operator is used to import the generated GPS coordinate stream into Secondo. The Operator requires at least three arguments: (i) The data source, (ii) the amount of lines to skip and (iii) the used comment character. All lines beginning with the comment character will be skipped. The operator reads each line from the data source and parses the content, until the input is processed completely. When the data is read from a file, the end of the input is indicated by reaching the end of the file. When the data is read from a network socket, the end is indicated by the ascii character EOT.
+
+__Example:__ The following query in Secondo will open a TCP socket on port 10025 and read all the received GPS coordinate updates from the TCP socket. Every coordinate update is converted into a tuple and send to the operator count. After the query finishes, the total amount of received tuples is printed to the console.
+
+```
+query [ const rel(tuple([Time: string, Moid: int, Tripid: int, X: real, Y: real])) 
+   value() ] csvimport [’tcp://10025’, 0, ""] count;
+```
+
+## Architecture
+The software is developed with an architectural focus on producing high amounts of GPS updates. BerlinModPlayer is written in C++ and uses the POSIX thread library to create multiple threads and utilize the available hardware as good as possible (see Figure 2). The input data is read by a _Producer Thread_ and placed into a vector. In this vector, the data can be reordered or processed otherwise, depending on the simulation mode.
+
+Occasionally, the content of the vector is moved to a fifo. A second thread, the _Consumer Thread_, reads the data from the fifo and writes them to the network socket. The fifo is the compound between the Producer and the Consumer Thread. Both threads are accessing the fifo simultaneously. To prevent race conditions, the access to the fifo needs to be synchronized. Due to the synchronization, only one thread can access the fifo at the same time. If boththreads want to access the fifo one thread will be blocked and has to wait until the other thread has finished the access. To ensure that both threads can perform their work without waiting much time, the above mentioned vector was introduced. With this vector, the Producer Thread can read data into the memory and placing it into the vector without interfering the consumer thread. Most of the time, the Consumer Thread can access the fifo exclusively. Only in the moment, when the data from the vector is moved to the fifo, simultaneous access to the fifo is needed. A third thread, the _Statistics Thread_, is collecting statistical information about the read and written data and writes it to the console and into a file.
+
+![Figure 2](doc/images/architecture.png)
+
+Figure 2: The architecture of the BerlinMODPlayer. The software uses three threads to do tier work: (i) A producer thread, (ii) a consumer thread and (iii) a statistics thread.
+
+## Simulation Modes
+BerlinMODPlayer provides currently two different simulation modes: (i) fixed and (ii) adaptive. The simulation mode determines how the trips, generated by BerlinMOD, are handled.
