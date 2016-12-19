@@ -6,7 +6,7 @@ set key left
 
 set ylabel "Updates"
 set xlabel "Time (Sec)"
-set title "BerlinMODPlayer simulation"
+set title "BerlinMODPlayer Simulation"
 
 # Uncomment this to get a square image
 #set size square
