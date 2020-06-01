@@ -78,6 +78,7 @@ struct Configuration {
 // Shared over multipe theads, so volatile is used to 
 // prevent caching issues
 struct Statistics {
+   volatile unsigned long skipped;
    volatile unsigned long read;
    volatile unsigned long send;
    volatile unsigned long queuesize;
@@ -564,7 +565,17 @@ public:
          cerr << "Invalid line: " << line << " skipping" << endl;
          return false;
       }
-      
+     
+      // Contains a valid begin time
+      if(lineData[2].find(":") == string::npos) {
+         return false;
+      }
+
+      // Contains a valid end time
+      if(lineData[3].find(":") == string::npos) {
+         return false;
+      }
+
       return true;
    }
 
@@ -589,14 +600,18 @@ public:
          vector<std::string> lineData;
          bool result = parseLineData(lineData, line);
          
-         if(result == true) {
+	 if(result != true) {
+               statistics->skipped++;
+	 } else {
             
             // Skip data before begin offset
             if(isBeforeBeginOffset(lineData)) {
+	       statistics->skipped++;
                continue;
             }
             
             if(isAfterEndOffset(lineData)) {
+               statistics->skipped++;
                break;
             }
             
@@ -1328,6 +1343,7 @@ public:
    */
    void printStatisticsData() {
       cout << "\r\033[2K" << "Sec: " << getElapsedSeconds();
+      cout << " \033[1m Skipped:\033[0m " << statistics -> skipped;
       cout << " \033[1m Read:\033[0m " << statistics -> read;
       cout << " \033[1m Send:\033[0m " << statistics -> send;
       cout << " \033[1m Queue size:\033[0m " << statistics -> queuesize;
